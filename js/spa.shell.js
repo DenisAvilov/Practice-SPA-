@@ -15,9 +15,9 @@
 spa.shell =  (function () {
     var
         configMap = {
-        //о
+
         anchor_schema_map : {
-          chat : {open : true, closed : true }
+          chat : {opened : true, closed : true }
         },
            main_html : String()
            + '<div class="spa-shell-head">'
@@ -29,26 +29,20 @@ spa.shell =  (function () {
            + ' <div class="spa-shell-main-nav"></div>'
            + ' <div class="spa-shell-main-content"></div>'
            + '</div>'
-           + '<div class="spa-shell-foot"></div>'
-           + '<div class="spa-shell-chat"></div>'
-           + '<div class="spa-shell-modal"></div>',
-              // << Дать разработчику возможность настраивать
-              //    скорость анимации и высоту окна чата >>
-            chat_extend_time    : 1000,
-            chat_retract_time   : 300,
-            chat_extend_height  : 450,
-            chat_retract_height : 15,
-            chat_extended_title   : "Щелкните, чтобы свернуть",
-            chat_retracted_title  : "Щелкните, чтобы раскрыть"
+           + '<div class="spa-shell-foot"></div>',
+
+            resize_interval : 200,
+
         },
          // Помещаем динамическую инфор-
          // мацию, доступную внутри модуля
          //  в объект stateMap.
 
         stateMap = {
-            $container : null,
-            anchor_map : {},    //Текущие значения якорей сохраняются в хэше stateMap.
-            is_chat_retracted : true
+          $container : undefined,
+          anchor_map : {},    //Текущие значения якорей сохраняются в хэше stateMap.
+          resize_idto : undefined
+          //is_chat_retracted : true
         },
 
 
@@ -56,8 +50,8 @@ spa.shell =  (function () {
 
         jqueryMap = {},
 
-        setJqueryMap, toggleChate, initModule,onClickChat,
-       copyAnchorMap, changeAnchorPart, onHashchange; //Объявляем три дополнительных метода:
+        setJqueryMap,  initModule,setChatAnchor,
+       copyAnchorMap, changeAnchorPart, onHashchange, onResize; //Объявляем три дополнительных метода:
 
     //--------- КОНЕЦ ПЕРЕМЕННЫХ В ОБЛАСТИ ВИДИМОСТИ МОДУЛЯ --------
 
@@ -85,67 +79,8 @@ spa.shell =  (function () {
     setJqueryMap = function () {
         var $container = stateMap.$container;
 
-        jqueryMap = {
-            $container: $container,
-            //Кэшируем в jqueryMap коллекцию jQuery,содержащую окно чата.
-            $chat : $container.find('.spa-shell-chat')
-
-        };
+        jqueryMap = { $container: $container };
     };
-
-     // Добавляем метод toggleChat
-     // «Создать единый метод сворачивания и раскрытия окна чата».
-
-    toggleChate = function ( do_extend , callback ) {
-
-           var
-               px_chat_ht = jqueryMap.$chat.height(),
-               is_open = px_chat_ht === configMap.chat_extend_height,
-               is_closed = px_chat_ht === configMap.chat_retract_height,
-               is_sliding = !is_open && !is_closed;
-
-
-           //«Избежать гонки – ситуации, когда окно чата одновременно сворачивается и раскрывается»
-
-           if (is_sliding) { return false };
-
-           //Начало открытия чата
-
-           if ( do_extend ){
-              jqueryMap.$chat.animate(
-                  { height : configMap.chat_extend_height },
-                  configMap.chat_extend_time,
-
-                 function () {
-                      jqueryMap.$chat.attr(
-                          'title', configMap.chat_extended_title
-                      );
-                     stateMap.is_chat_retracted = false;
-                      if(callback){ callback( jqueryMap.$chat ); }
-                  }
-              );
-              return true;
-           }
-           // конец открытия чата
-           // начало сворачивания окна чата
-
-           jqueryMap.$chat.animate(
-               { height : configMap.chat_retract_height},
-               configMap.chat_retract_time,
-              function (){
-                   jqueryMap.$chat.attr(
-                       'title', configMap.chat_retracted_title);
-
-                   stateMap.is_chat_retracted = true;
-
-                  if(callback){callback( jqueryMap.$chat );}
-              }
-           );
-            return true;
-           // Конец сворачивания окна чата
-
-       };
-           // Конец метода toggleChat
 
 
     changeAnchorPart = function (arg_map){
@@ -169,7 +104,7 @@ spa.shell =  (function () {
                 else {
                     delete anchor_map_revise[key_name_dep];
                     delete anchor_map_revise['_s' + key_name_dep];
-                }
+               }
             }
         }
         // Конец объединения изменений в хэше якорей
@@ -180,10 +115,14 @@ spa.shell =  (function () {
 
         }
         catch ( error ){
-            $.uriAnchor.setAnchor( stateMap.anchor_map.null,true );
+
+            $.uriAnchor.setAnchor( stateMap.anchor_map, null, true );
             bool_return = false;
         }
+
+
         return bool_return;
+
     };
 
     //--------------------- КОНЕЦ МЕТОДОВ DOM ----------------------
@@ -191,36 +130,30 @@ spa.shell =  (function () {
 
     //---------------- НАЧАЛО ОБРАБОТЧИКОВ СОБЫТИЙ -----------------
 
-   onClickChat = function( event ) {
 
-       changeAnchorPart({
-           chat: ( stateMap.is_chat_retracted ? 'open' : 'closed' )
-       });
-       return false;
-
-
-/*
-        if(toggleChate( stateMap.is_chat_retracted )){
-            $.uriAnchor.setAnchor({
-                chat : ( stateMap.is_chat_retracted ? 'open' : 'closed' )
-            });
-        }
-        return true;
-*/
-   };
 
     onHashchange = function (event) {
        var
-        anchor_map_previous = copyAnchorMap(),
-        anchor_map_proposed,
-        _s_chat_previous, _s_chat_proposed,
-        s_chat_proposed;
+           _s_chat_previous, _s_chat_proposed, s_chat_proposed,
+           anchor_map_proposed,
+           is_ok = true,
+           anchor_map_previous = copyAnchorMap();
 
-        try { anchor_map_proposed = $.uriAnchor.makeAnchorMap(); }
+// пытаемся разобрать якорь
+
+        try { anchor_map_proposed = $.uriAnchor.makeAnchorMap();
+
+        }
+
         catch  ( error ){
             $.uriAnchor.setAnchor( anchor_map_previous, null, true );
             return false;
         }
+
+        for(var key in anchor_map_proposed){
+            console.log(anchor_map_proposed[key])
+        };
+
          stateMap.anchor_map = anchor_map_proposed;
         // вспомогательные переменные
         _s_chat_previous = anchor_map_previous._s_chat;
@@ -229,60 +162,91 @@ spa.shell =  (function () {
          if( ! anchor_map_previous || _s_chat_previous !== _s_chat_proposed){
              s_chat_proposed = anchor_map_proposed.chat;
              switch  ( s_chat_proposed ){
-                 case 'open' :
-                     toggleChate( true );
+                 case 'opened' :
+                     is_ok = spa.chat.setSliderPosition( 'opened' );
                      break;
                  case  'closed' :
-                     toggleChate( false );
+                     is_ok = spa.chat.setSliderPosition( 'closed' );
                      break;
                  default :
-                     toggleChate( false );
+                     spa.chat.setSliderPosition( 'closed' );
+                   //  toggleChat( false );
                      delete anchor_map_proposed.chat;
                      $.uriAnchor.setAnchor( anchor_map_proposed, null, true );
-
              }
          }
+        if ( ! is_ok ){
+            if ( anchor_map_previous ){
+                $.uriAnchor.setAnchor( anchor_map_previous, null, true );
+                stateMap.anchor_map = anchor_map_previous;
+            } else {
+                delete anchor_map_proposed.chat;
+                $.uriAnchor.setAnchor( anchor_map_proposed, null, true );
+            }
+        }
         // Конец изменения компонента Chat
         return false;
 
     }
 
+    onResize = function () {
+        if (stateMap.resize_idto) {
+            return true;
+        }
+        spa.chat.handleResize();
+        stateMap.resize_idto = setTimeout(
+            function () {
+                stateMap.resize_idto = undefined;
+            },
+            configMap.resize_interval
+        );
+        return true;
+    };
+
+
     //----------------- КОНЕЦ ОБРАБОТЧИКОВ СОБЫТИЙ -----------------
+    //---------------- НАЧАЛО ОБРАТНЫХ ВЫЗОВОВ -----------------
+
+    setChatAnchor = function ( position_type ){
+        return changeAnchorPart({ chat : position_type });
+    };
+
+    //----------------- КОНЕЦ ОБРАТНЫХ ВЫЗОВОВ -----------------
+
+
 
     //------------------- НАЧАЛО ОТКРЫТЫХ МЕТОДОВ ------------------
+
     initModule = function ($container) {
         // Загрузить HTML и кэшировать jQuery
         stateMap.$container = $container;
         $container.html(configMap.main_html);
         setJqueryMap();
 
-        stateMap.is_chat_retracted = true;
-        jqueryMap.$chat.attr( 'title', configMap.chat_retracted_title ).click( onClickChat );
+      //  stateMap.is_chat_retracted = true;
+      //  jqueryMap.$chat.attr( 'title', configMap.chat_retracted_title ).click( onClickChat );
 
         $.uriAnchor.configModule({
 
           //  Конфигурируем подключаемый модуль uriAnchor для проверки по схеме.
             schema_map : configMap.anchor_schema_map
 
-        });
-
-        spa.chat.configModule( {} );
-        spa.chat.initModule( jqueryMap.$chat );
-
-
+    });
+        spa.chat.configModule({
+            set_chat_anchor : setChatAnchor,
+            chat_model      : spa.model.chat,
+            people_model    : spa.model.people
+    });
+        spa.chat.initModule( jqueryMap.$container );
 
         $(window)
-             .bind( 'hashchange', onHashchange ) //onHashchange
+
+             .bind( 'hashchange', onHashchange ) //Вызов bind часто используют для привязки функции к контексту, чтобы затем присвоить её в обычную переменную и вызывать уже без явного указания объекта.
+             .bind( 'resize', onResize )         //Привязываем событие window.resize.
              .trigger( 'hashchange' );
 
-        // тестировать переключение
-        // setTimeout( function () { toggleChate ( true ); }, 3000 );
-        // setTimeout( function () { toggleChate ( false );}, 8000 );
-    };
 
+    };
         return { initModule : initModule };
 
-
 })();
-
-//стр 159 - 160 алгоритм spa

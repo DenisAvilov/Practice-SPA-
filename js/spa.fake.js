@@ -1,6 +1,6 @@
 /*
-* spa.model.js
-* Модуль Shell для SPA
+* spa.fake.js
+* Модуль Fake
 */
 /*jslint
      browser : true, continue : true,
@@ -12,4 +12,6 @@
 */
 /*global $, spa */
 
-spa.model = (function (){ return {}; }());
+spa.fake = (function () {
+       return {};
+}());

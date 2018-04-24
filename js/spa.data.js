@@ -1,7 +1,8 @@
 /*
-* spa.model.js
-* Модуль Shell для SPA
+* spa.data.js
+* Модуль Data
 */
+
 /*jslint
      browser : true, continue : true,
      devel   : true, indent   : 2,
@@ -12,4 +13,7 @@
 */
 /*global $, spa */
 
-spa.model = (function (){ return {}; }());
+
+spa.data = (function () {
+    return {};
+}());
