@@ -13,7 +13,7 @@
 /*global $, spa */
 
 spa.model = (function (){
-
+    'use strict';
     var
         configMap = { anon_id : 'a0' },
         stateMap = {
@@ -37,13 +37,10 @@ spa.model = (function (){
 
     makePerson = function ( person_map ) {
         var person,
-            cid
-                = person_map.cid,
+            cid     = person_map.cid,
             css_map = person_map.css_map,
-            id
-                = person_map.id,
-            name
-                = person_map.name;
+            id      = person_map.id,
+            name    = person_map.name;
 
         if ( cid === undefined || ! name ) {
             throw 'client id and name required';
@@ -56,10 +53,12 @@ spa.model = (function (){
 
 
         if ( id ) { person.id = id; }
+
         stateMap.people_cid_map[ cid ] = person;
         stateMap.people_db.insert( person );
         return person;
     };
+
     people = {
         get_db : function () { return stateMap.people_db; },
         get_cid_map : function () { return stateMap.people_cid_map; }
@@ -71,8 +70,8 @@ spa.model = (function (){
         var i, people_list, person_map;
 
         stateMap.anon_user = makePerson({
-            cid : configMap.anon_id,
-            id : configMap.anon_id,
+            cid  : configMap.anon_id,
+            id   : configMap.anon_id,
             name : 'anonymous'
         });
         stateMap.user = stateMap.anon_user;
@@ -81,12 +80,12 @@ spa.model = (function (){
             if (isFakeData) {
                 people_list = spa.fake.getPeopleList();
                 for (i = 0; i < people_list.length; i++) {
-                    person_map = people_list[i];
+                    person_map = people_list[ i ];
                     makePerson({
-                        cid: person_map._id,
-                        css_map: person_map.css_map,
-                        id: person_map._id,
-                        name: person_map.name
+                        cid     : person_map._id,
+                        css_map : person_map.css_map,
+                        id      : person_map._id,
+                        name    : person_map.name
                     });
                 }
             }
@@ -98,3 +97,5 @@ spa.model = (function (){
         };
 
     }());
+
+//остановился Листинг 5.14  стр 217
